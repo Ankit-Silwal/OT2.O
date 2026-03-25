@@ -1,0 +1,15 @@
+services:
+  redis:
+    image: redis:7
+    container_name: redis_OT2
+    ports:
+      - "6969:6379"
+  postgres:
+    image:  postgres:15
+    container_name: postgres_OT2
+    environment:
+      - POSTGRES_USER=iamshituser
+      - POSTGRES_PASSWORD=passofshituser
+      - POSTGRES_DB=shitproject
+    ports:
+      - "5555:5432"
