@@ -37,7 +37,6 @@ export async function runConsumer(){
           }
           setPrice(event.symbol,event.price)
         }
-        
       }
     }catch(err){
       console.log(`Error`,err)
