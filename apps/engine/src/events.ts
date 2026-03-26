@@ -12,7 +12,8 @@ export interface CreateOrderEvent{
   orderId:string,
   userId:string,
   symbol:string,
-  amount:number,
+  quantity:number,
+  price?:number,
   side:"BUY"|"SELL"
 }
 

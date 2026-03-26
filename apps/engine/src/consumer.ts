@@ -44,7 +44,7 @@ export async function runConsumer(){
               orderId:data.orderId,
               userId:data.userId,
               symbol:data.symbol,
-              amount:Number.parseFloat(data.amount),
+              quantity:Number.parseFloat(data.amount),
               side:data.side as "BUY" | "SELL"
             }
             const currentPrice=getPrice(event.symbol)
@@ -59,7 +59,7 @@ export async function runConsumer(){
               continue;
             }
             const balance=getBalance(event.userId);
-            const cost=currentPrice*event.amount
+            const cost=currentPrice*event.quantity
             if(event.side==="BUY"){
               if(!balance || balance < cost){
                 await redis.xadd(
@@ -72,15 +72,14 @@ export async function runConsumer(){
                 continue;
               }
               setBalance(event.userId,balance-cost);
-              setPosition(event.userId,event.symbol,event.amount)
+              setPosition(event.userId,event.symbol,event.quantity)
               await redis.xadd(
                 "engine-response","*",
                 "type","ORDER_FILLED",
                 "userId", event.userId,
-                "symbol", event.symbol,
                 "side", event.side,
                 "price", currentPrice.toString(),
-                "amount", event.amount.toString()
+                "quantity", event.quantity.toString()
               )
             }else if(event.side==="SELL"){
               await redis.xadd(
@@ -88,8 +87,8 @@ export async function runConsumer(){
                 "type","ORDER_FILLED",
                 "orderId",event.orderId,
                 "userId",event.userId,
-                "symbol",event.symbol,
-                "price",event.amount
+                "symbol",event.symbol,  
+                "quantity",event.quantity
               )
             }
           } catch(e) {
