@@ -7,3 +7,4 @@ function main(){
   setBalance("1",10000);
   runConsumer()
 }
+main()

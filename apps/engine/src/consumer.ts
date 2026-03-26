@@ -1,6 +1,6 @@
 import { redis } from "./redis.js";
 import { getPrice,setBalance,getBalance,getPosition,setPosition, setPrice } from "./state.js";
-import type { PriceEvent } from "./events.js";
+import type { CreateOrderEvent, PriceEvent } from "./events.js";
 
 export async function runConsumer(){
   console.log("The consumer server has started to work yearh nigga")
@@ -36,6 +36,65 @@ export async function runConsumer(){
             timestamp:Number.parseInt(data.timestamp)
           }
           setPrice(event.symbol,event.price)
+        }
+        if(data.type==="CREATE_ORDER" && data.orderId && data.userId && data.symbol && data.amount && data.side){
+          try{
+            const event:CreateOrderEvent={
+              type:"CREATE_ORDER",
+              orderId:data.orderId,
+              userId:data.userId,
+              symbol:data.symbol,
+              amount:Number.parseFloat(data.amount),
+              side:data.side as "BUY" | "SELL"
+            }
+            const currentPrice=getPrice(event.symbol)
+            if(!currentPrice){
+              await redis.xadd(
+                "engine-response","*",
+                "type","ORDER_REJECTED",
+                "orderId",event.orderId,
+                "userId",event.userId,
+                "reason","NO_PRICE"
+              )
+              continue;
+            }
+            const balance=getBalance(event.userId);
+            const cost=currentPrice*event.amount
+            if(event.side==="BUY"){
+              if(!balance || balance < cost){
+                await redis.xadd(
+                  "engine-response","*",
+                  "type","ORDER_REJECTED",
+                  "orderId", event.orderId, 
+                  "userId", event.userId,
+                  "reason", "INSUFFICIENT_BALANCE"
+                )
+                continue;
+              }
+              setBalance(event.userId,balance-cost);
+              setPosition(event.userId,event.symbol,event.amount)
+              await redis.xadd(
+                "engine-response","*",
+                "type","ORDER_FILLED",
+                "userId", event.userId,
+                "symbol", event.symbol,
+                "side", event.side,
+                "price", currentPrice.toString(),
+                "amount", event.amount.toString()
+              )
+            }else if(event.side==="SELL"){
+              await redis.xadd(
+                "engine-response","*",
+                "type","ORDER_FILLED",
+                "orderId",event.orderId,
+                "userId",event.userId,
+                "symbol",event.symbol,
+                "price",event.amount
+              )
+            }
+          } catch(e) {
+            console.log(e);
+          }
         }
       }
     }catch(err){
