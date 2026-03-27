@@ -17,7 +17,6 @@ router.get("/coins", authMiddleware, getUserCoins)
 type TradePayload = {
   symbol: string
   side: "BUY" | "SELL"
-  price: number
   quantity: number
 }
 
@@ -46,7 +45,6 @@ async function publishTradeOrder(orderId: string, data: TradeStreamPayload) {
     "userId", data.userId,
     "symbol", data.symbol,
     "side", data.side,
-    "price", data.price.toString(),
     "quantity", data.quantity.toString()
   )
 }

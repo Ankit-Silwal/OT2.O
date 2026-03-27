@@ -11,6 +11,23 @@ export async function createUser(req:Request,res:Response){
         message:"Please provide email and password"
       })
     }
+
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        email: email
+      },
+      select: {
+        id: true
+      }
+    })
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already registered"
+      })
+    }
+
     const userId=randomUUID();
 
     await prisma.user.create({
@@ -48,6 +65,13 @@ export async function createUser(req:Request,res:Response){
       token:token
     })
   } catch (err) {
+    if (err instanceof Error && err.message.includes("Unique constraint failed")) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already registered"
+      })
+    }
+
     return res.status(500).json({
       success:false,
       message: err instanceof Error ? err.message : "Failed to register user"
@@ -195,4 +219,3 @@ export async function getUserCoins(req: Request, res: Response) {
     })
   }
 }
-
