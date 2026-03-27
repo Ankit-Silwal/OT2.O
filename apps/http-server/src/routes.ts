@@ -3,8 +3,14 @@ import { tradeSchema } from "./validator.js";
 import type { Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { redis } from "./redis.js";
+import { authMiddleware } from "./authMiddleware.js";
+import { createUser, logoutUser, registerUser } from "./user.js";
 
 const router = Router()
+
+router.post("/register", createUser)
+router.post("/login", registerUser)
+router.post("/logout", logoutUser)
 
 type TradePayload = {
   userId: string
@@ -63,6 +69,6 @@ router.post("/trade", async (req: Request, res: Response) => {
       error: err instanceof Error ? err.message : "Unknown error"
     })
   }
-})
+},authMiddleware)
 
 export default router

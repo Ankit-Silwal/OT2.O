@@ -1,16 +1,17 @@
 import type { Request,Response } from "express";
 import { randomUUID } from "node:crypto";
 import {prisma} from "@repo/shared"
-import { success } from "zod";
+import jwt from "jsonwebtoken"
 export async function createUser(req:Request,res:Response){
   const {email,password}=req.body;
-  if(email || password){
+  if(!email || !password){
     return res.status(400).json({
       success:false,
       message:"Please provide email and password"
     })
   }
   const userId=randomUUID();
+  
   await prisma.user.create({
     data:{
       id:userId,
@@ -26,22 +27,58 @@ export async function registerUser(req:Request,res:Response){
   if(!email || !password){
     return res.status(400).json({
       success:false,
-      message:"Plese provide the required password"
+      message:"Please provide email and password"
     })
   }
-  const checkPass=await prisma.user.findUnique({
+  const user=await prisma.user.findUnique({
     where:{
       email:email
     },select:{
+      id:true,
+      email:true,
       password:true
     }
   })
-  if(password!==checkPass){
+  if(!user || password!==user.password){
     return res.status(400).json({
       success:false,
-      message:"The password didnt match sir"
+      message:"Invalid email or password"
     })
   }
-  
+
+  const token = jwt.sign(
+    {
+      userId: user.id,
+    },
+    process.env.JWT_SECRET || "whateveritworkshaha",
+    {
+      expiresIn: "1h"
+    }
+  );
+  res.cookie("token",token,{
+    httpOnly:true,
+    secure:true,
+    sameSite:true,
+    maxAge:60*60*1000*24 //1 day
+  })
+  return res.status(200).json({
+    success:true,
+    message:"Succesfully register"
+  })
+
+
+}
+
+export async function logoutUser(req:Request,res:Response){
+  res.clearCookie("token",{
+    httpOnly:true,
+    secure:true,
+    sameSite:true
+  })
+
+  return res.status(200).json({
+    success:true,
+    message:"Logged out successfully"
+  })
 }
 
