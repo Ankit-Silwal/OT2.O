@@ -36,7 +36,7 @@ async function handlePriceUpdate(data:Record<string,string>) {
 }
 
 async function handleBuyOrder(event: CreateOrderEvent, currentPrice: number) {
-  const balance = getBalance(event.userId)
+  const balance = await getBalance(event.userId)
   const cost = currentPrice * event.quantity
 
   if(!balance || balance < cost){
@@ -50,7 +50,7 @@ async function handleBuyOrder(event: CreateOrderEvent, currentPrice: number) {
     return
   }
 
-  setBalance(event.userId, balance - cost)
+  await setBalance(event.userId, balance - cost)
   setPosition(event.userId, event.symbol, event.quantity)
 
   await redis.xadd(

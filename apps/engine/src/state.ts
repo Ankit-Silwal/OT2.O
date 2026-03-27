@@ -1,3 +1,5 @@
+import {prisma} from "@repo/shared"
+
 const prices=new Map<string,number>
 const balances=new Map<string,number>
 const positions=new Map<string,Map<string,number>>
@@ -8,12 +10,39 @@ export function getPrice(symbol:string):number|undefined{
 export function setPrice(symbol:string,amount:number){
   prices.set(symbol,amount)
 }
-export function setBalance(userId:string,amount:number):void{
-  balances.set(userId,amount);
+export async function setBalance(userId:string,amount:number):Promise<void>{
+  await prisma.user.update({
+    where:{
+      id:userId
+    },
+    data:{
+      balance:amount
+    }
+  })
+  balances.set(userId,amount)
 }
 
-export function getBalance(userId:string):number|undefined{
-  return balances.get(userId);
+export async function getBalance(userId:string):Promise<number|undefined>{
+  const cachedBalance = balances.get(userId)
+  if(cachedBalance !== undefined){
+    return cachedBalance
+  }
+
+  const user = await prisma.user.findUnique({
+    where:{
+      id:userId
+    },
+    select:{
+      balance:true
+    }
+  })
+
+  if(!user){
+    return undefined
+  }
+
+  balances.set(userId,user.balance)
+  return user.balance
 }
 
 export function getPosition(userId:string,symbol:string):number{
