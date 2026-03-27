@@ -4,6 +4,19 @@ const prices=new Map<string,number>
 const balances=new Map<string,number>
 const positions=new Map<string,Map<string,number>>
 
+function getAssetFieldForSymbol(symbol: string): "Bitcoin" | "Ethereum" | "Binance" | undefined {
+  if (symbol === "BTCUSDT") {
+    return "Bitcoin"
+  }
+  if (symbol === "ETHUSDT") {
+    return "Ethereum"
+  }
+  if (symbol === "BNBUSDT") {
+    return "Binance"
+  }
+  return undefined
+}
+
 export function getPrice(symbol:string):number|undefined{
   return prices.get(symbol)
 }
@@ -43,6 +56,24 @@ export async function getBalance(userId:string):Promise<number|undefined>{
 
   balances.set(userId,user.balance)
   return user.balance
+}
+
+export async function increaseAssetHolding(userId: string, symbol: string, quantity: number): Promise<void> {
+  const assetField = getAssetFieldForSymbol(symbol)
+  if (!assetField) {
+    return
+  }
+
+  await prisma.user.update({
+    where: {
+      id: userId
+    },
+    data: {
+      [assetField]: {
+        increment: quantity
+      }
+    }
+  })
 }
 
 export function getPosition(userId:string,symbol:string):number{

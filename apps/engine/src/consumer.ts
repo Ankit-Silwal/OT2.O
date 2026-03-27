@@ -1,5 +1,5 @@
 import { redis } from "./redis.js";
-import { getPrice,setBalance,getBalance,setPosition, setPrice } from "./state.js";
+import { getPrice,setBalance,getBalance,setPosition, setPrice, increaseAssetHolding } from "./state.js";
 import type { CreateOrderEvent, PriceEvent } from "./events.js";
 
 const sleep = (ms:number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -51,6 +51,7 @@ async function handleBuyOrder(event: CreateOrderEvent, currentPrice: number) {
   }
 
   await setBalance(event.userId, balance - cost)
+  await increaseAssetHolding(event.userId, event.symbol, event.quantity)
   setPosition(event.userId, event.symbol, event.quantity)
 
   await redis.xadd(

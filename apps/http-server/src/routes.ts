@@ -4,13 +4,15 @@ import type { Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { redis } from "./redis.js";
 import { authMiddleware } from "./authMiddleware.js";
-import { createUser, logoutUser, registerUser } from "./user.js";
+import { createUser, getUserBalance, getUserCoins, logoutUser, registerUser } from "./user.js";
 
 const router = Router()
 
 router.post("/register", createUser)
 router.post("/login", registerUser)
 router.post("/logout", logoutUser)
+router.get("/balance", authMiddleware, getUserBalance)
+router.get("/coins", authMiddleware, getUserCoins)
 
 type TradePayload = {
   symbol: string

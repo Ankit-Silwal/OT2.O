@@ -18,8 +18,11 @@ export async function createUser(req:Request,res:Response){
         id:userId,
         email:email,
         password:password,
-        balance:3000
-      }
+        balance:3000,
+        Bitcoin:0,
+        Ethereum:0,
+        Binance:0
+      } as any
     })
 
     const token = jwt.sign(
@@ -109,5 +112,87 @@ export async function logoutUser(req:Request,res:Response){
     success:true,
     message:"Logged out successfully"
   })
+}
+
+export async function getUserBalance(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: req.userId
+      },
+      select: {
+        balance: true
+      }
+    })
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      balance: user.balance
+    })
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err instanceof Error ? err.message : "Failed to fetch balance"
+    })
+  }
+}
+
+export async function getUserCoins(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      })
+    }
+
+    const rows = await prisma.$queryRaw<Array<{
+      Bitcoin: number
+      Ethereum: number
+      Binance: number
+    }>>`
+      SELECT "Bitcoin", "Ethereum", "Binance"
+      FROM "User"
+      WHERE id = ${req.userId}
+      LIMIT 1
+    `
+
+    const user = rows[0]
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      coins: {
+        BTC: user.Bitcoin,
+        ETH: user.Ethereum,
+        BNB: user.Binance
+      }
+    })
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err instanceof Error ? err.message : "Failed to fetch coin balances"
+    })
+  }
 }
 
