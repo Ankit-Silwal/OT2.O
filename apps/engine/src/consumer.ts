@@ -1,5 +1,5 @@
 import { redis } from "./redis.js";
-import { getPrice,setBalance,getBalance,setPosition, setPrice, increaseAssetHolding } from "./state.js";
+import { getPrice,setBalance,getBalance,setPosition, setPrice, increaseAssetHolding, getAssetHolding } from "./state.js";
 import type { CreateOrderEvent, PriceEvent } from "./events.js";
 
 const sleep = (ms:number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -47,7 +47,7 @@ async function handleBuyOrder(event: CreateOrderEvent, currentPrice: number) {
       "userId", event.userId,
       "reason", "INSUFFICIENT_BALANCE"
     )
-    return
+    throw new Error("Insufficient balance in your pocket sir")
   }
 
   await setBalance(event.userId, balance - cost)
@@ -76,7 +76,19 @@ async function handleSellOrder(event: CreateOrderEvent) {
       "userId", event.userId,
       "reason", "NO_PRICE"
     )
-    return
+    throw new Error("no price tag for this sir")
+  }
+
+  const holding = await getAssetHolding(event.userId, event.symbol)
+  if(holding === undefined || holding < event.quantity){
+    await redis.xadd(
+      "engine-response", "*",
+      "type", "ORDER_REJECTED",
+      "orderId", event.orderId,
+      "userId", event.userId,
+      "reason", "INSUFFICIENT_ASSET"
+    )
+    throw new Error("insufficient asset to sell")
   }
 
   await redis.xadd(
@@ -120,7 +132,7 @@ async function handleCreateOrder(data:Record<string,string>) {
       "userId", event.userId,
       "reason", "NO_PRICE"
     )
-    return
+    throw new Error("No price in your pocket motherfukcer")
   }
 
   if(event.side === "BUY"){

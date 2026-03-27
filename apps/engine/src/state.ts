@@ -76,6 +76,29 @@ export async function increaseAssetHolding(userId: string, symbol: string, quant
   })
 }
 
+export async function getAssetHolding(userId: string, symbol: string): Promise<number | undefined> {
+  const assetField = getAssetFieldForSymbol(symbol)
+  if (!assetField) {
+    return undefined
+  }
+
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId
+    },
+    select: {
+      [assetField]: true
+    }
+  })
+
+  if (!user) {
+    return undefined
+  }
+
+  const value = user[assetField]
+  return typeof value === "number" ? value : undefined
+}
+
 export function getPosition(userId:string,symbol:string):number{
   const userPosition=positions.get(userId);
   if(!userPosition) return 0;
