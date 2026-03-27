@@ -13,11 +13,14 @@ router.post("/login", registerUser)
 router.post("/logout", logoutUser)
 
 type TradePayload = {
-  userId: string
   symbol: string
   side: "BUY" | "SELL"
   price: number
   quantity: number
+}
+
+type TradeStreamPayload = TradePayload & {
+  userId: string
 }
 
 function validateTradeRequest(body: unknown): TradePayload {
@@ -33,7 +36,7 @@ async function notifyPending(orderId: string, userId: string) {
   )
 }
 
-async function publishTradeOrder(orderId: string, data: TradePayload) {
+async function publishTradeOrder(orderId: string, data: TradeStreamPayload) {
   await redis.xadd(
     "trade", "*",
     "type", "CREATE_ORDER",
@@ -46,17 +49,27 @@ async function publishTradeOrder(orderId: string, data: TradePayload) {
   )
 }
 
-async function createOrder(data: TradePayload) {
+async function createOrder(data: TradePayload, userId: string) {
   const orderId = randomUUID()
-  await notifyPending(orderId, data.userId)
-  await publishTradeOrder(orderId, data)
+  await notifyPending(orderId, userId)
+  await publishTradeOrder(orderId, {
+    ...data,
+    userId
+  })
   return orderId
 }
 
-router.post("/trade", async (req: Request, res: Response) => {
+router.post("/trade", authMiddleware, async (req: Request, res: Response) => {
   try {
+    if (!req.userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized"
+      })
+    }
+
     const data = validateTradeRequest(req.body)
-    const orderId = await createOrder(data)
+    const orderId = await createOrder(data, req.userId)
 
     return res.status(200).json({
       success: true,
@@ -69,6 +82,6 @@ router.post("/trade", async (req: Request, res: Response) => {
       error: err instanceof Error ? err.message : "Unknown error"
     })
   }
-},authMiddleware)
+})
 
 export default router

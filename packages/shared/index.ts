@@ -1,8 +1,14 @@
+import { config as loadEnv } from "dotenv";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client.js";
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: resolve(currentDir, ".env") });
+
 if (!process.env.DATABASE_URL) {
-	throw new Error("DATABASE_URL is required");
+	throw new Error(`DATABASE_URL is required as it is ${process.env.DATABASE_URL}`);
 }
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
