@@ -66,6 +66,18 @@ async function handleBuyOrder(event: CreateOrderEvent, currentPrice: number) {
 }
 
 async function handleSellOrder(event: CreateOrderEvent) {
+  const currentPrice = getPrice(event.symbol)
+  if(!currentPrice){
+    await redis.xadd(
+      "engine-response", "*",
+      "type", "ORDER_REJECTED",
+      "orderId", event.orderId,
+      "userId", event.userId,
+      "reason", "NO_PRICE"
+    )
+    return
+  }
+
   await redis.xadd(
     "engine-response", "*",
     "type", "ORDER_FILLED",
@@ -73,6 +85,7 @@ async function handleSellOrder(event: CreateOrderEvent) {
     "userId", event.userId,
     "symbol", event.symbol,
     "side", event.side,
+    "price", currentPrice.toString(),
     "quantity", event.quantity.toString()
   )
 }
@@ -81,10 +94,10 @@ async function handleCreateOrder(data:Record<string,string>) {
   const orderId = data.orderId
   const userId = data.userId
   const symbol = data.symbol
-  const amount = data.amount ? Number.parseFloat(data.amount) : undefined
+  const quantity = data.quantity ? Number.parseFloat(data.quantity) : undefined
   const side = data.side as "BUY" | "SELL" | undefined
 
-  if(!orderId || !userId || !symbol || amount === undefined || Number.isNaN(amount) || !side || (side !== "BUY" && side !== "SELL")){
+  if(!orderId || !userId || !symbol || quantity === undefined || Number.isNaN(quantity) || !side || (side !== "BUY" && side !== "SELL")){
     return
   }
 
@@ -93,7 +106,7 @@ async function handleCreateOrder(data:Record<string,string>) {
     orderId,
     userId,
     symbol,
-    quantity: amount,
+    quantity,
     side
   }
 

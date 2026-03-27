@@ -30,8 +30,8 @@ function toNumber(value?:string): number | undefined {
 
 async function handlePending(data:Record<string,string>){
   const orderId = data.orderId
-  const userId = toNumber(data.userId)
-  if(!orderId || userId === undefined) return
+  const userId = data.userId
+  if(!orderId || !userId) return
 
   await prisma.trade.upsert({
     where:{
@@ -39,6 +39,7 @@ async function handlePending(data:Record<string,string>){
     },
     update:{},
     create:{
+      id: await redis.incr("trade:id"),
       orderId,
       userId,
       symbol:data.symbol ?? "",
@@ -52,12 +53,27 @@ async function handlePending(data:Record<string,string>){
 
 async function handleFinalized(data:Record<string,string>, status:"FILLED"|"REJECTED"){
   const orderId = data.orderId
+
+  if(!orderId) return
+
+  if(status === "REJECTED"){
+    await prisma.trade.update({
+      where:{
+        orderId
+      },
+      data:{
+        status
+      }
+    })
+    return
+  }
+
   const side = data.side
   const symbol = data.symbol
   const price = toNumber(data.price)
   const quantity = toNumber(data.quantity)
 
-  if(!orderId || !side || !symbol || price === undefined || quantity === undefined) return
+  if(!side || !symbol || price === undefined || quantity === undefined) return
 
   await prisma.trade.update({
     where:{
